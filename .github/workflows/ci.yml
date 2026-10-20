@@ -1,0 +1,41 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12", "3.13"]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pytest pytest-cov PyYAML
+
+      - name: Run test suite with coverage
+        run: |
+          pytest --cov=api_contract_diff --cov-report=xml --cov-report=term
+
+      - name: Test CLI execution on examples
+        run: |
+          python -m api_contract_diff --version
+          python -m api_contract_diff examples/v1_petstore.json examples/v1_petstore.json
+          python -m api_contract_diff examples/v1_petstore.json examples/v2_petstore_breaking.json --format json --no-fail
+          python -m api_contract_diff examples/v1_petstore.json examples/v2_petstore_breaking.json --format markdown --no-fail
